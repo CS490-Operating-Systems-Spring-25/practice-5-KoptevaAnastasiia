@@ -1,0 +1,83 @@
+var bitmap_start
+var i
+
+label bitmap_shift_main
+    write 1000 to var:bitmap_start
+
+label main_loop
+    write OP_READ_INPUT to REG_OP
+    cpu_exec
+    copy KEYBOARD_BUFFER to REG_A
+
+    write "a" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:shift_left REG_A  // Перевіряємо, чи натиснута "a"
+
+    write "d" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:shift_right REG_A  // Перевіряємо, чи натиснута "d"
+
+    write "q" to REG_B
+    write OP_CMP_EQ to REG_OP
+    cpu_exec
+    jump_if label:exit_program REG_A  // Перевіряємо, чи натиснута "q"
+
+    jump label:main_loop
+
+// Сдвиг влево
+label shift_left
+    write 0 to var:i
+label shift_loop_left
+    jump_if label:end_shift var:i  // Використовуємо var:i для перевірки умови
+
+    copy var:bitmap_start to REG_A
+    copy var:i to REG_B
+    write OP_ADD to REG_OP
+    cpu_exec
+    copy REG_RES to REG_C  
+
+    copy *REG_C to REG_D  
+    write 1 to REG_B
+    write OP_GET_COLUMN to REG_OP
+    cpu_exec
+    copy REG_RES to REG_D  
+
+    copy REG_D to *REG_C  
+
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:i
+    jump label:shift_loop_left
+
+label end_shift
+    jump label:main_loop
+
+// Сдвиг вправо
+label shift_right
+    write 0 to var:i
+label shift_loop_right
+    jump_if label:end_shift var:i  // Використовуємо var:i для перевірки умови
+
+    copy var:bitmap_start to REG_A
+    copy var:i to REG_B
+    write OP_ADD to REG_OP
+    cpu_exec
+    copy REG_RES to REG_C  
+
+    write " " to REG_D  
+    copy *REG_C to REG_B  
+    write OP_CONCAT_WITH to REG_OP
+    cpu_exec
+    copy REG_RES to *REG_C  
+
+    write OP_INCR to REG_OP
+    cpu_exec
+    copy REG_RES to var:i
+    jump label:shift_loop_right
+
+label exit_program
+    write OP_HALT to REG_OP
+    cpu_exec
+

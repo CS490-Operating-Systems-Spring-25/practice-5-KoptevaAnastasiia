@@ -11,7 +11,7 @@
 jump label:kernel_entry_point
 
 
-// Global constant
+// Global constants for bitmap memory
 var sys_return                      // global variable for instruction that should be stored to the stack
 var sys_stack_ptr                   // pointer to stack
 var sys_stack_return                // helper variable to manage sys_stack_push jump
@@ -20,6 +20,11 @@ var sys_stack_return                // helper variable to manage sys_stack_push 
 var sys_stack_backup_REG_A
 var sys_stack_backup_REG_RES
 var sys_stack_backup_REG_ERROR
+
+// Global constants for bitmap memory
+var bitmap_ptr                      // pointer to the bitmap memory
+var bitmap_size                     // size of the bitmap
+var bitmap_shift_temp               // temporary storage for shifted bitmap
 
 // To save the value of var:sys_return to the stack, use the following:
 //          copy PROGRAM_COUNTER to var:sys_stack_return
@@ -90,3 +95,93 @@ label sys_stack_pop
     copy var:sys_stack_backup_REG_RES to REG_RES
     copy var:sys_stack_backup_REG_ERROR to REG_ERROR
     jump *var:sys_stack_pop_jump
+
+
+// Function to perform left shift on the bitmap
+label bitmap_left_shift
+    // Backup current registers
+    copy REG_A to var:sys_stack_backup_REG_A
+    copy REG_RES to var:sys_stack_backup_REG_RES
+    copy REG_ERROR to var:sys_stack_backup_REG_ERROR
+
+    // Push current bitmap to stack to preserve it
+    copy bitmap_ptr to sys_return
+    jump label:sys_stack_push
+
+    // Shift all bits to the left and append zero at the end
+    // Assuming the bitmap is a single word (for simplicity)
+    copy bitmap_ptr to REG_A
+    // Perform left shift: shifting all bits to left, with 0 appended at the end
+    write OP_LSHIFT to REG_OP
+    cpu_exec
+    copy REG_RES to bitmap_shift_temp
+
+    // Store the shifted bitmap back to memory
+    copy bitmap_shift_temp to bitmap_ptr
+
+    // Pop the original bitmap back from stack
+    jump label:sys_stack_pop
+
+    // Restore original registers
+    copy var:sys_stack_backup_REG_A to REG_A
+    copy var:sys_stack_backup_REG_RES to REG_RES
+    copy var:sys_stack_backup_REG_ERROR to REG_ERROR
+
+    return
+
+// Function to perform right shift on the bitmap
+label bitmap_right_shift
+    // Backup current registers
+    copy REG_A to var:sys_stack_backup_REG_A
+    copy REG_RES to var:sys_stack_backup_REG_RES
+    copy REG_ERROR to var:sys_stack_backup_REG_ERROR
+
+    // Push current bitmap to stack to preserve it
+    copy bitmap_ptr to sys_return
+    jump label:sys_stack_push
+
+    // Shift all bits to the right and prepend zero at the start
+    // Assuming the bitmap is a single word (for simplicity)
+    copy bitmap_ptr to REG_A
+    // Perform right shift: shifting all bits to right, with 0 prepended at the start
+    write OP_RSHIFT to REG_OP
+    cpu_exec
+    copy REG_RES to bitmap_shift_temp
+
+    // Store the shifted bitmap back to memory
+    copy bitmap_shift_temp to bitmap_ptr
+
+    // Pop the original bitmap back from stack
+    jump label:sys_stack_pop
+
+    // Restore original registers
+    copy var:sys_stack_backup_REG_A to REG_A
+    copy var:sys_stack_backup_REG_RES to REG_RES
+    copy var:sys_stack_backup_REG_ERROR to REG_ERROR
+
+    return
+
+// Main loop to check for user input and trigger the shifts
+label main_loop
+    // Check for key press input (pseudo code for keyboard input)
+    read_key_to REG_A
+    
+    // If 'a' is pressed, perform left shift
+    compare REG_A to 'a'
+    jump_eq label:bitmap_left_shift
+
+    // If 'd' is pressed, perform right shift
+    compare REG_A to 'd'
+    jump_eq label:bitmap_right_shift
+
+    // If 'q' is pressed, quit the program
+    compare REG_A to 'q'
+    jump_eq label:exit_program
+
+    // Loop back if any other key is pressed
+    jump label:main_loop
+
+label exit_program
+    // Code to exit the program
+    return
+
